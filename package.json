@@ -1,0 +1,11 @@
+{
+  "name": "crudElm",
+  "version": "1.0.0",
+  "description": "Crud simples em Elm com sweetAlert2",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "bulma": "^0.8.1",
+    "sweetalert2": "^9.10.9"
+  }
+}
