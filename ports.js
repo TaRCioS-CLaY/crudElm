@@ -18,7 +18,6 @@ app.ports.cadastrar.subscribe((pessoa) =>{
         'success'
     );
 
-    app.ports.pessoasCadastradas.send(JSON.stringify(pessoasNoStorage))
 })
 
 

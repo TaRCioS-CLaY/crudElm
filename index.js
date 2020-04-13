@@ -5149,6 +5149,7 @@ var $author$project$Main$Model = F3(
 		return {idade: idade, listaPessoas: listaPessoas, nome: nome};
 	});
 var $elm$json$Json$Decode$decodeString = _Json_runOnString;
+var $elm$json$Json$Decode$list = _Json_decodeList;
 var $author$project$Main$Pessoa = F2(
 	function (nome, idade) {
 		return {idade: idade, nome: nome};
@@ -5162,11 +5163,13 @@ var $author$project$Main$pessoaDecoder = A3(
 	A2($elm$json$Json$Decode$field, 'nome', $elm$json$Json$Decode$string),
 	A2($elm$json$Json$Decode$field, 'idade', $elm$json$Json$Decode$int));
 var $author$project$Main$getPessoas = function (listaPessoas) {
-	var _v0 = A2($elm$json$Json$Decode$decodeString, $author$project$Main$pessoaDecoder, listaPessoas);
+	var _v0 = A2(
+		$elm$json$Json$Decode$decodeString,
+		$elm$json$Json$Decode$list($author$project$Main$pessoaDecoder),
+		listaPessoas);
 	if (_v0.$ === 'Ok') {
 		var pessoa = _v0.a;
-		return _List_fromArray(
-			[pessoa]);
+		return pessoa;
 	} else {
 		return _List_Nil;
 	}
@@ -5182,23 +5185,12 @@ var $author$project$Main$init = function (pList) {
 			$author$project$Main$getPessoas(pList)),
 		$elm$core$Platform$Cmd$none);
 };
-var $author$project$Main$Lista = function (a) {
-	return {$: 'Lista', a: a};
-};
-var $author$project$Main$pessoasCadastradas = _Platform_incomingPort('pessoasCadastradas', $elm$json$Json$Decode$string);
+var $elm$core$Platform$Sub$batch = _Platform_batch;
+var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
 var $author$project$Main$subscriptions = function (_v0) {
-	return $author$project$Main$pessoasCadastradas($author$project$Main$Lista);
+	return $elm$core$Platform$Sub$none;
 };
 var $elm$json$Json$Encode$int = _Json_wrap;
-var $elm$json$Json$Encode$list = F2(
-	function (func, entries) {
-		return _Json_wrap(
-			A3(
-				$elm$core$List$foldl,
-				_Json_addEntry(func),
-				_Json_emptyArray(_Utils_Tuple0),
-				entries));
-	});
 var $elm$json$Json$Encode$object = function (pairs) {
 	return _Json_wrap(
 		A3(
@@ -5222,21 +5214,6 @@ var $author$project$Main$cadastrar = _Platform_outgoingPort(
 					_Utils_Tuple2(
 					'idade',
 					$elm$json$Json$Encode$int($.idade)),
-					_Utils_Tuple2(
-					'listaPessoas',
-					$elm$json$Json$Encode$list(
-						function ($) {
-							return $elm$json$Json$Encode$object(
-								_List_fromArray(
-									[
-										_Utils_Tuple2(
-										'idade',
-										$elm$json$Json$Encode$int($.idade)),
-										_Utils_Tuple2(
-										'nome',
-										$elm$json$Json$Encode$string($.nome))
-									]));
-						})($.listaPessoas)),
 					_Utils_Tuple2(
 					'nome',
 					$elm$json$Json$Encode$string($.nome))
@@ -5288,20 +5265,18 @@ var $author$project$Main$update = F2(
 							}),
 						$elm$core$Platform$Cmd$none);
 				}
-			case 'Salvar':
-				var pessoa = msg.a;
-				return _Utils_Tuple2(
-					model,
-					$author$project$Main$cadastrar(pessoa));
 			default:
-				var pessoas = msg.a;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{
-							listaPessoas: $author$project$Main$getPessoas(pessoas)
+							listaPessoas: A2(
+								$elm$core$List$cons,
+								A2($author$project$Main$Pessoa, model.nome, model.idade),
+								model.listaPessoas)
 						}),
-					$elm$core$Platform$Cmd$none);
+					$author$project$Main$cadastrar(
+						A2($author$project$Main$Pessoa, model.nome, model.idade)));
 		}
 	});
 var $author$project$Main$Idade = function (a) {
@@ -5350,7 +5325,8 @@ var $author$project$Main$linhaPessoa = function (pessoa) {
 				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$text(pessoa.nome)
+						$elm$html$Html$text(
+						$elm$core$String$fromInt(pessoa.idade))
 					]))
 			]));
 };
@@ -5517,53 +5493,80 @@ var $author$project$Main$view = function (model) {
 									[
 										$elm$html$Html$Attributes$class('button is-success is-rounded'),
 										$elm$html$Html$Events$onClick(
-										$author$project$Main$Salvar(
-											_Utils_update(
-												model,
-												{idade: model.idade, listaPessoas: model.listaPessoas, nome: model.nome})))
+										$author$project$Main$Salvar(model))
 									]),
 								_List_fromArray(
 									[
 										$elm$html$Html$text('Cadastrar')
 									]))
-							])),
-						A2($elm$html$Html$div, _List_Nil, _List_Nil),
+							]))
+					])),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('hero')
+					]),
+				_List_fromArray(
+					[
 						A2(
 						$elm$html$Html$div,
-						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$class('hero-body'),
+								A2($elm$html$Html$Attributes$style, 'align-self', 'center')
+							]),
 						_List_fromArray(
 							[
 								A2(
-								$elm$html$Html$table,
+								$elm$html$Html$div,
 								_List_fromArray(
 									[
-										$elm$html$Html$Attributes$class('table')
+										$elm$html$Html$Attributes$class('box')
 									]),
 								_List_fromArray(
 									[
 										A2(
-										$elm$html$Html$thead,
-										_List_Nil,
+										$elm$html$Html$div,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$class('field')
+											]),
 										_List_fromArray(
 											[
 												A2(
-												$elm$html$Html$th,
-												_List_Nil,
+												$elm$html$Html$table,
 												_List_fromArray(
 													[
-														$elm$html$Html$text('Nome')
-													])),
-												A2(
-												$elm$html$Html$th,
-												_List_Nil,
+														$elm$html$Html$Attributes$class('table')
+													]),
 												_List_fromArray(
 													[
-														$elm$html$Html$text('Idade')
-													])),
-												A2(
-												$elm$html$Html$tbody,
-												_List_Nil,
-												A2($elm$core$List$map, $author$project$Main$linhaPessoa, model.listaPessoas))
+														A2(
+														$elm$html$Html$thead,
+														_List_Nil,
+														_List_fromArray(
+															[
+																A2(
+																$elm$html$Html$th,
+																_List_Nil,
+																_List_fromArray(
+																	[
+																		$elm$html$Html$text('Nome')
+																	])),
+																A2(
+																$elm$html$Html$th,
+																_List_Nil,
+																_List_fromArray(
+																	[
+																		$elm$html$Html$text('Idade')
+																	]))
+															])),
+														A2(
+														$elm$html$Html$tbody,
+														_List_Nil,
+														A2($elm$core$List$map, $author$project$Main$linhaPessoa, model.listaPessoas))
+													]))
 											]))
 									]))
 							]))
