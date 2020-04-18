@@ -5,6 +5,7 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^5.13.0",
     "bulma": "^0.8.1",
     "sweetalert2": "^9.10.9"
   }
