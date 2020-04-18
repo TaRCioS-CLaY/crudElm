@@ -66,7 +66,7 @@ type Msg
     | Salvar
     | Apagar Pessoa
     | ConfirmApagar Pessoa Int
-    | Editar (Maybe Int)
+    | Editar (Maybe Int) Pessoa
     | AceitaEdicao Int Pessoa
     | Cancelar
 
@@ -131,10 +131,10 @@ update msg model =
         ConfirmApagar pessoa codigo ->
             ( { model | apagandoPessoa = codigo }, apagar pessoa )
 
-        Editar codigoParaEditar ->
+        Editar codigoParaEditar pessoa ->
             case codigoParaEditar of
                 Just codigo ->
-                    ( { model | editandoPessoa = codigo }, Cmd.none )
+                    ( { model | editandoPessoa = codigo , nomeE = pessoa.nome , idadeE = pessoa.idade}, Cmd.none )
 
                 Nothing ->
                     ( { model | editandoPessoa = -1 }, Cmd.none )
@@ -279,7 +279,7 @@ linhaPessoa editando pModel ( codigo, pessoa ) =
             [ td [] [ text pessoa.nome ]
             , td [ style "width" "6rem" ] [ text (String.fromInt pessoa.idade) ]
             , td []
-                [ button [ class "button is-small is-focused is-rounded is-info", Editar (Just codigo) |> onClick ]
+                [ button [ class "button is-small is-focused is-rounded is-info", Editar (Just codigo) (Pessoa pessoa.nome pessoa.idade) |> onClick ]
                     [ i [ class "fas fa-user-edit" ]
                         []
                     ]
