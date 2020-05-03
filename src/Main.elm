@@ -7,6 +7,8 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Json.Decode exposing (..)
 import Json.Encode exposing (..)
+import Task exposing (..)
+import Time exposing (..)
 
 
 
@@ -35,23 +37,29 @@ type alias Model =
     , listaPessoas : Dict Int Pessoa
     , editandoPessoa : Int
     , apagandoPessoa : Int
+    , horario : Posix
+    , zonaHorario : Zone
     }
 
 
 type alias Pessoa =
     { nome : String
     , idade : Int
+    , creteadAt : Int
     }
 
 
 init : String -> ( Model, Cmd Msg )
 init pList =
-    ( Model "" 0 "" 0 (Dict.fromList (getPessoas pList)) -1 0, Cmd.none )
+    ( Model "" 0 "" 0 (Dict.fromList (getPessoas pList)) -1 0 (Time.millisToPosix 0) Time.utc, Task.perform Zona Time.here )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    pessoaApagada Apagar
+    Sub.batch
+        [ pessoaApagada Apagar
+        , Time.every 1000 Horario
+        ]
 
 
 
@@ -69,6 +77,8 @@ type Msg
     | Editar (Maybe Int) Pessoa
     | AceitaEdicao Int Pessoa
     | Cancelar
+    | Horario Time.Posix
+    | Zona Time.Zone
 
 
 
@@ -116,7 +126,7 @@ update msg model =
             let
                 pessoaNovaNaLista =
                     -- Pessoa model.nome model.idade (codigoPessoa model.listaPessoas) :: model.listaPessoas
-                    Dict.insert (codigoPessoa model.listaPessoas) (Pessoa model.nome model.idade) model.listaPessoas
+                    Dict.insert (codigoPessoa model.listaPessoas) (Pessoa model.nome model.idade (Time.posixToMillis model.horario)) model.listaPessoas
             in
             ( { model | listaPessoas = pessoaNovaNaLista }, toJs (Dict.values pessoaNovaNaLista) )
 
@@ -134,7 +144,7 @@ update msg model =
         Editar codigoParaEditar pessoa ->
             case codigoParaEditar of
                 Just codigo ->
-                    ( { model | editandoPessoa = codigo , nomeE = pessoa.nome , idadeE = pessoa.idade}, Cmd.none )
+                    ( { model | editandoPessoa = codigo, nomeE = pessoa.nome, idadeE = pessoa.idade }, Cmd.none )
 
                 Nothing ->
                     ( { model | editandoPessoa = -1 }, Cmd.none )
@@ -150,6 +160,12 @@ update msg model =
 
         Cancelar ->
             ( { model | editandoPessoa = -1 }, Cmd.none )
+
+        Horario hR ->
+            ( { model | horario = hR }, Cmd.none )
+
+        Zona z ->
+            ( { model | zonaHorario = z }, Cmd.none )
 
 
 
@@ -182,10 +198,12 @@ view model =
             [ div [ class "hero-body", style "align-self" "center" ]
                 [ div [ class "box" ]
                     [ div [ class "field" ]
-                        [ table [ class "table" ]
+                        [ input [ class "input is-rounded ", type_ "text", placeholder "Buscar" ] []
+                        , table [ class "table" ]
                             [ thead []
                                 [ th [] [ text "Nome" ]
                                 , th [] [ text "Idade" ]
+                                , th [] [ text "Data e Hora" ]
                                 , th [] []
                                 , th [] []
                                 ]
@@ -226,9 +244,10 @@ verificarStringInt string =
 
 pessoaDecoder : Decoder Pessoa
 pessoaDecoder =
-    map2 Pessoa
+    Json.Decode.map3 Pessoa
         (field "nome" Json.Decode.string)
         (field "idade" Json.Decode.int)
+        (field "creteadAt" Json.Decode.int)
 
 
 getPessoas : String -> List ( Int, Pessoa )
@@ -264,8 +283,9 @@ linhaPessoa editando pModel ( codigo, pessoa ) =
         tr []
             [ td [] [ input [ class "input is-rounded is-small", type_ "text", placeholder "Nome", Html.Attributes.value pModel.nomeE, onInput NomeEditado ] [] ]
             , td [ style "width" "6rem" ] [ input [ class "input is-rounded is-small", style "width" "4rem", type_ "text", placeholder "Idade", Html.Attributes.value (String.fromInt pModel.idadeE), onInput IdadeEditada ] [] ]
+            , td [] [ text (dataFormatada (Time.millisToPosix pessoa.creteadAt) pModel.zonaHorario ++ " ás " ++ horarioFormatado (Time.millisToPosix pessoa.creteadAt) pModel.zonaHorario) ]
             , td []
-                [ button [ class "button is-small is-focused is-rounded is-info", AceitaEdicao codigo (Pessoa pModel.nomeE pModel.idadeE) |> onClick ]
+                [ button [ class "button is-small is-focused is-rounded is-info", AceitaEdicao codigo (Pessoa pModel.nomeE pModel.idadeE pessoa.creteadAt) |> onClick ]
                     [ text "Salvar" ]
                 ]
             , td []
@@ -278,8 +298,9 @@ linhaPessoa editando pModel ( codigo, pessoa ) =
         tr []
             [ td [] [ text pessoa.nome ]
             , td [ style "width" "6rem" ] [ text (String.fromInt pessoa.idade) ]
+            , td [] [ text (dataFormatada (Time.millisToPosix pessoa.creteadAt) pModel.zonaHorario ++ " ás " ++ horarioFormatado (Time.millisToPosix pessoa.creteadAt) pModel.zonaHorario) ]
             , td []
-                [ button [ class "button is-small is-focused is-rounded is-info", Editar (Just codigo) (Pessoa pessoa.nome pessoa.idade) |> onClick ]
+                [ button [ class "button is-small is-focused is-rounded is-info", Editar (Just codigo) (Pessoa pessoa.nome pessoa.idade 0) |> onClick ]
                     [ i [ class "fas fa-user-edit" ]
                         []
                     ]
@@ -368,3 +389,101 @@ codigoPessoa lista =
     else
         Dict.keys lista
             |> List.sum
+
+
+
+-- Funções Data e hora
+
+
+dia : Posix -> Zone -> String
+dia posix zona =
+    String.fromInt (Time.toDay zona posix)
+
+
+mes : Posix -> Zone -> String
+mes posix zona =
+    case Time.toMonth zona posix of
+        Jan ->
+            "01"
+
+        Feb ->
+            "02"
+
+        Mar ->
+            "03"
+
+        Apr ->
+            "04"
+
+        May ->
+            "05"
+
+        Jun ->
+            "06"
+
+        Jul ->
+            "07"
+
+        Aug ->
+            "08"
+
+        Sep ->
+            "09"
+
+        Oct ->
+            "10"
+
+        Nov ->
+            "11"
+
+        Dec ->
+            "12"
+
+
+ano : Posix -> Zone -> String
+ano posix zona =
+    String.fromInt (Time.toYear zona posix)
+
+
+hora : Posix -> Zone -> String
+hora posix zona =
+    String.fromInt (Time.toHour zona posix)
+
+
+minuto : Posix -> Zone -> String
+minuto posix zona =
+    String.fromInt (Time.toMinute zona posix)
+
+
+segundo : Posix -> Zone -> String
+segundo posix zona =
+    String.fromInt (Time.toSecond zona posix)
+
+
+diaEHora : Posix -> Zone -> String
+diaEHora posix zona =
+    "Dia: " ++ String.fromInt (Time.toDay zona posix) ++ " Hora: " ++ String.fromInt (Time.toHour zona posix)
+
+
+dataFormatada : Posix -> Zone -> String
+dataFormatada posix zona =
+    -- 21/04/2020 às 09:55
+    dia posix zona ++ "/" ++ mes posix zona ++ "/" ++ ano posix zona
+
+
+horarioFormatado : Posix -> Zone -> String
+horarioFormatado posix zona =
+    -- 21/04/2020 às 09:55
+    hora posix zona ++ ":" ++ minuto posix zona ++ ":" ++ segundo posix zona
+
+
+
+-- horarioAtual : Int
+-- horarioAtual =
+--     Time.posixToMillis (Task.perform Horario Time.now)
+-- pegarHorario : Cmd Msg
+-- pegarHorario =
+--     Task.perform Horario Time.now
+-- pegarZona : Zone
+-- pegarZona =
+--     Task.perform Horario Time.here
